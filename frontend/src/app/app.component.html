@@ -1,0 +1,442 @@
+<section class="login-shell" *ngIf="!auth.user(); else appShell">
+  <form class="login-panel" (ngSubmit)="login()">
+    <p class="eyebrow">Acceso</p>
+    <h1>Creditos</h1>
+    <input name="username" [(ngModel)]="loginForm.username" placeholder="Usuario" autocomplete="username">
+    <input name="password" type="password" [(ngModel)]="loginForm.password" placeholder="Contraseña" autocomplete="current-password">
+    <button type="submit">Ingresar</button>
+    <p class="error" *ngIf="loginError()">{{ loginError() }}</p>
+    <div class="login-help">
+      <strong>Usuarios locales</strong>
+      <span>admin / admin123</span>
+      <span>usuario / usuario123</span>
+    </div>
+  </form>
+</section>
+
+<ng-template #appShell>
+<main class="shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <p class="eyebrow">Modulo independiente</p>
+      <h1>Creditos</h1>
+      <p class="session">{{ auth.user()?.full_name }} · {{ auth.user()?.role }}</p>
+      <button type="button" class="logout-button" (click)="logout()">Salir</button>
+    </div>
+
+    <nav class="module-nav">
+      <section>
+        <span>Creditos</span>
+        <button type="button" [class.active]="activeModule() === 'dashboard'" (click)="setModule('dashboard')">Seguimiento</button>
+        <button type="button" [class.active]="activeModule() === 'new-credit'" (click)="setModule('new-credit')">Nueva solicitud</button>
+        <button type="button" [class.active]="activeModule() === 'reports'" (click)="setModule('reports')">Reportes</button>
+      </section>
+      <section>
+        <span>Comunicacion</span>
+        <button type="button" [class.active]="activeModule() === 'notifications'" (click)="setModule('notifications')">Notificaciones</button>
+      </section>
+      <section *ngIf="auth.user()?.role === 'admin'">
+        <span>Administracion</span>
+        <button type="button" [class.active]="activeModule() === 'users'" (click)="setModule('users')">Usuarios</button>
+      </section>
+    </nav>
+  </aside>
+
+  <section class="workspace" *ngIf="activeModule() === 'dashboard'">
+    <header class="topbar">
+      <div>
+        <h2>Seguimiento operativo</h2>
+        <span>{{ loading() ? 'Cargando...' : credits().length + ' solicitudes' }}</span>
+      </div>
+      <form class="search" (ngSubmit)="loadCredits()">
+        <input name="search" [(ngModel)]="search" placeholder="Buscar placa, cliente, documento o VIN">
+        <button type="submit">Buscar</button>
+      </form>
+    </header>
+
+    <section class="board">
+      <article class="lane" *ngFor="let stage of stages()">
+        <header>
+          <strong>{{ stage.name }}</strong>
+          <span>{{ groupedCredits().get(stage.code)?.length ?? 0 }}</span>
+        </header>
+        <button
+          type="button"
+          class="credit-card"
+          *ngFor="let credit of groupedCredits().get(stage.code)"
+          [class.active]="selected()?.id === credit.id"
+          (click)="selectCredit(credit)">
+          <strong>{{ credit.plate || credit.vin || credit.reference }}</strong>
+          <span>{{ credit.customer_name }}</span>
+          <small>{{ credit.advisor_name || 'Sin asesor' }} · {{ money(credit.financed_value) }}</small>
+          <em *ngIf="credit.selected_bank">{{ credit.selected_bank.name }}</em>
+        </button>
+      </article>
+    </section>
+  </section>
+
+  <section class="module-page" *ngIf="activeModule() === 'new-credit'">
+    <header class="module-header">
+      <div>
+        <p class="eyebrow">Creditos</p>
+        <h2>Nueva solicitud</h2>
+      </div>
+    </header>
+    <form class="module-form" (ngSubmit)="createCredit()">
+      <label>Cliente<input name="customer" [(ngModel)]="quickCredit.customer_name" required></label>
+      <label>Placa o VIN<input name="plate" [(ngModel)]="quickCredit.plate"></label>
+      <label>Asesor<input name="advisor" [(ngModel)]="quickCredit.advisor_name"></label>
+      <label>Vitrina<input name="showroom" [(ngModel)]="quickCredit.showroom"></label>
+      <label>Valor venta<input name="sale" type="number" [(ngModel)]="quickCredit.sale_price"></label>
+      <label>Cuota inicial<input name="down" type="number" [(ngModel)]="quickCredit.down_payment"></label>
+      <button type="submit">Crear solicitud</button>
+    </form>
+  </section>
+
+  <section class="module-page" *ngIf="activeModule() === 'users' && auth.user()?.role === 'admin'">
+    <header class="module-header">
+      <div>
+        <p class="eyebrow">Administracion</p>
+        <h2>Usuarios</h2>
+      </div>
+    </header>
+    <div class="users-layout">
+      <form class="module-form" (ngSubmit)="createUser()">
+        <label>Nombre completo<input name="newFullName" [(ngModel)]="newUser.full_name"></label>
+        <label>Usuario<input name="newUsername" [(ngModel)]="newUser.username"></label>
+        <label>Clave<input name="newPassword" type="password" [(ngModel)]="newUser.password"></label>
+        <label>Rol
+          <select name="newRole" [(ngModel)]="newUser.role">
+            <option value="user">Usuario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </label>
+        <button type="submit">Crear usuario</button>
+        <p class="error" *ngIf="userCreateError()">{{ userCreateError() }}</p>
+      </form>
+      <section class="users-table">
+        <article *ngFor="let item of users()">
+          <strong>{{ item.full_name }}</strong>
+          <span>{{ item.username }}</span>
+          <em>{{ item.role }}</em>
+          <button
+            type="button"
+            class="delete-button"
+            *ngIf="item.active && item.username !== 'admin' && item.id !== auth.user()?.id"
+            (click)="deleteUser(item)">
+            Eliminar
+          </button>
+        </article>
+      </section>
+    </div>
+  </section>
+
+  <section class="module-page" *ngIf="activeModule() === 'reports'">
+    <header class="module-header">
+      <div>
+        <p class="eyebrow">Creditos</p>
+        <h2>Reportes Excel</h2>
+      </div>
+    </header>
+
+    <form class="report-filters" (ngSubmit)="downloadReportExcel()">
+      <input name="reportSearch" [(ngModel)]="reportFilters.search" placeholder="Cliente, placa, VIN, asesor o vitrina">
+      <select name="reportStage" [(ngModel)]="reportFilters.stage_id">
+        <option [ngValue]="null">Todas las etapas</option>
+        <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
+      </select>
+      <select name="reportBank" [(ngModel)]="reportFilters.bank_id">
+        <option [ngValue]="null">Todos los bancos</option>
+        <option *ngFor="let bank of banks()" [ngValue]="bank.id">{{ bank.name }}</option>
+      </select>
+      <input name="reportFrom" type="date" [(ngModel)]="reportFilters.date_from">
+      <input name="reportTo" type="date" [(ngModel)]="reportFilters.date_to">
+      <button type="button" (click)="downloadReportExcel()">Descargar Excel</button>
+      <button type="button" class="secondary-button" (click)="clearReportFilters()">Limpiar</button>
+    </form>
+
+    <section class="report-download-note">
+      <strong>El reporte se genera en Excel.</strong>
+      <span>Aplica los filtros que necesites y descarga el archivo con toda la información de las solicitudes.</span>
+    </section>
+  </section>
+
+  <section class="module-page" *ngIf="activeModule() === 'notifications'">
+    <header class="module-header">
+      <div>
+        <p class="eyebrow">Comunicacion</p>
+        <h2>Notificaciones</h2>
+      </div>
+      <div class="segmented">
+        <button type="button" [class.active]="notificationBox() === 'inbox'" (click)="notificationBox.set('inbox'); loadNotifications()">Recibidas</button>
+        <button type="button" [class.active]="notificationBox() === 'sent'" (click)="notificationBox.set('sent'); loadNotifications()">Enviadas</button>
+      </div>
+    </header>
+    <div class="notifications-layout">
+      <form class="module-form notification-form" (ngSubmit)="sendNotification()">
+        <label>Destinatario
+          <select name="notificationRecipient" [(ngModel)]="notificationForm.recipient_id">
+            <option [ngValue]="0">Seleccionar usuario</option>
+            <option *ngFor="let recipient of recipients()" [ngValue]="recipient.id">{{ recipient.full_name }} · {{ recipient.role }}</option>
+          </select>
+        </label>
+        <label>Asunto<input name="notificationSubject" [(ngModel)]="notificationForm.subject"></label>
+        <label>Credito relacionado<input name="notificationCredit" type="number" [(ngModel)]="notificationForm.credit_id" placeholder="Opcional"></label>
+        <label class="full-row">Mensaje<textarea name="notificationMessage" [(ngModel)]="notificationForm.message" rows="5"></textarea></label>
+        <button type="submit">Enviar notificacion</button>
+        <p class="error" *ngIf="notificationError()">{{ notificationError() }}</p>
+      </form>
+
+      <section class="notification-list">
+        <article *ngFor="let item of notifications()" [class.unread]="notificationBox() === 'inbox' && !item.read_at">
+          <header>
+            <strong>{{ item.subject }}</strong>
+            <span>{{ notificationBox() === 'sent' ? 'Para: ' + item.recipient.full_name : 'De: ' + item.sender.full_name }}</span>
+          </header>
+          <p>{{ item.message }}</p>
+          <small *ngIf="item.credit_id">Credito ID: {{ item.credit_id }}</small>
+          <button type="button" *ngIf="notificationBox() === 'inbox' && !item.read_at" (click)="markRead(item)">Marcar como leida</button>
+        </article>
+      </section>
+    </div>
+  </section>
+
+  <aside class="detail" *ngIf="activeModule() === 'dashboard' && selected() as credit">
+    <header>
+      <p class="eyebrow">{{ credit.reference }}</p>
+      <h2>{{ credit.customer_name }}</h2>
+      <span>{{ credit.stage.name }}</span>
+      <button type="button" class="notify-button" (click)="notifyAboutSelectedCredit()">Notificar</button>
+      <button
+        type="button"
+        class="delete-credit-button"
+        *ngIf="auth.user()?.role === 'admin'"
+        (click)="deleteSelectedCredit(credit)">
+        Eliminar solicitud
+      </button>
+    </header>
+
+    <section class="stage-actions">
+      <button type="button" *ngFor="let stage of stages()" [class.current]="stage.id === credit.stage_id" (click)="moveSelected(stage)">
+        {{ stage.name }}
+      </button>
+    </section>
+
+    <nav class="detail-tabs">
+      <button type="button" [class.active]="activeDetailTab() === 'summary'" (click)="activeDetailTab.set('summary')">Resumen</button>
+      <button type="button" [class.active]="activeDetailTab() === 'banks'" (click)="activeDetailTab.set('banks')">Bancos</button>
+      <button type="button" [class.active]="activeDetailTab() === 'documents'" (click)="activeDetailTab.set('documents')">Documentos</button>
+      <button type="button" [class.active]="activeDetailTab() === 'alerts'" (click)="activeDetailTab.set('alerts')">Alertas</button>
+      <button type="button" [class.active]="activeDetailTab() === 'legalization'" (click)="activeDetailTab.set('legalization')">Legalizacion</button>
+    </nav>
+
+    <section class="panel" *ngIf="activeDetailTab() === 'summary'">
+      <h3>Resumen</h3>
+      <form class="edit-form" (ngSubmit)="saveSelectedCredit(credit)">
+        <label>Celular<input name="creditPhone" [(ngModel)]="credit.phone"></label>
+        <label>Precio de venta<input name="creditSalePrice" type="number" [(ngModel)]="credit.sale_price"></label>
+        <label>Cuota inicial<input name="creditDownPayment" type="number" [(ngModel)]="credit.down_payment"></label>
+        <label>Valor financiado<input name="creditFinanced" [value]="money(credit.financed_value)" readonly></label>
+        <button type="submit">Guardar resumen</button>
+      </form>
+      <section class="info-grid">
+        <div><span>Placa</span><strong>{{ credit.plate || '-' }}</strong></div>
+        <div><span>VIN</span><strong>{{ credit.vin || '-' }}</strong></div>
+        <div><span>Asesor</span><strong>{{ credit.advisor_name || '-' }}</strong></div>
+        <div><span>Vitrina</span><strong>{{ credit.showroom || '-' }}</strong></div>
+      </section>
+    </section>
+
+    <section class="panel" *ngIf="activeDetailTab() === 'banks'">
+      <h3>Bancos</h3>
+      <form class="edit-form" (ngSubmit)="saveSelectedCredit(credit)">
+        <label>Banco de viabilidad
+          <select name="creditViabilityBank" [(ngModel)]="credit.viability_bank_id">
+            <option [ngValue]="null">Sin banco</option>
+            <option *ngFor="let bank of banks()" [ngValue]="bank.id">{{ bank.name }}</option>
+          </select>
+        </label>
+        <label>Banco seleccionado
+          <select name="creditSelectedBank" [(ngModel)]="credit.selected_bank_id">
+            <option [ngValue]="null">Sin banco</option>
+            <option *ngFor="let bank of banks()" [ngValue]="bank.id">{{ bank.name }}</option>
+          </select>
+        </label>
+        <label>Banco desembolso
+          <select name="creditDisbursementBank" [(ngModel)]="credit.disbursement_bank_id">
+            <option [ngValue]="null">Sin banco</option>
+            <option *ngFor="let bank of banks()" [ngValue]="bank.id">{{ bank.name }}</option>
+          </select>
+        </label>
+        <label>Motivo de rechazo<input name="creditRejectionReason" [(ngModel)]="credit.rejection_reason"></label>
+        <button type="submit">Guardar bancos principales</button>
+      </form>
+      <form class="inline-form" (ngSubmit)="addBankLine()">
+        <select name="bank" [(ngModel)]="bankLine.bank_id">
+          <option [ngValue]="0">Banco</option>
+          <option *ngFor="let bank of banks()" [ngValue]="bank.id">{{ bank.name }}</option>
+        </select>
+        <select name="type" [(ngModel)]="bankLine.type">
+          <option value="viabilidad">Viabilidad</option>
+          <option value="estudio">Estudio</option>
+          <option value="aprobacion">Aprobacion</option>
+          <option value="rechazo">Rechazo</option>
+          <option value="desembolso">Desembolso</option>
+        </select>
+        <select name="status" [(ngModel)]="bankLine.status">
+          <option value="pendiente">Pendiente</option>
+          <option value="radicado">Radicado</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="negado">Negado</option>
+          <option value="desembolsado">Desembolsado</option>
+        </select>
+        <input name="conditions" [(ngModel)]="bankLine.conditions" placeholder="Condiciones">
+        <button type="submit">Agregar</button>
+      </form>
+      <ul class="rows">
+        <li *ngFor="let line of credit.bank_lines">
+          <strong>{{ line.bank.name }}</strong>
+          <span>{{ line.type }} · {{ line.status }}</span>
+          <small>{{ line.conditions || 'Sin condiciones' }}</small>
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel" *ngIf="activeDetailTab() === 'legalization'">
+      <h3>Legalizacion</h3>
+      <form class="edit-form" (ngSubmit)="saveSelectedCredit(credit)">
+        <label class="check-row"><input name="creditOkRunt" type="checkbox" [(ngModel)]="credit.ok_runt"> OK RUNT / Preinscripcion prenda</label>
+        <label>Observacion RUNT<input name="creditRuntObservation" [(ngModel)]="credit.runt_observation"></label>
+        <label class="check-row"><input name="creditInsuredOk" type="checkbox" [(ngModel)]="credit.insured_ok"> Asegurado OK</label>
+        <label class="check-row"><input name="creditPolicyIssued" type="checkbox" [(ngModel)]="credit.policy_issued"> Poliza emitida</label>
+        <label>Entidad aseguradora<input name="creditInsuranceCompany" [(ngModel)]="credit.insurance_company"></label>
+        <label>Observacion poliza<input name="creditPolicyObservation" [(ngModel)]="credit.policy_observation"></label>
+        <label>Valor desembolsado<input name="creditDisbursedValue" type="number" [(ngModel)]="credit.disbursed_value"></label>
+        <label class="check-row"><input name="creditOwnershipCard" type="checkbox" [(ngModel)]="credit.ownership_card_issued"> Tarjeta de propiedad emitida</label>
+        <label>Fecha entrega tarjeta<input name="creditOwnershipDate" type="date" [(ngModel)]="credit.ownership_card_delivery_date"></label>
+        <button type="submit">Guardar legalizacion</button>
+      </form>
+    </section>
+
+    <section class="panel" *ngIf="activeDetailTab() === 'documents'">
+      <h3>Documentos</h3>
+      <form class="inline-form" (ngSubmit)="addDocument()">
+        <input name="docName" [(ngModel)]="document.name" placeholder="Nombre">
+        <select name="docType" [(ngModel)]="document.type">
+          <option value="cedula">Cedula</option>
+          <option value="tps">TPS</option>
+          <option value="proforma">Proforma</option>
+          <option value="definitiva">Definitiva</option>
+          <option value="prenda">Prenda</option>
+          <option value="ctl">CTL</option>
+          <option value="otro">Otro</option>
+        </select>
+        <input name="docObservation" [(ngModel)]="document.observation" placeholder="Observacion">
+        <input name="docFile" type="file" (change)="onDocumentFileSelected($event)">
+        <button type="submit">Subir</button>
+      </form>
+      <section class="document-history">
+        <h3>Historial de documentos</h3>
+        <div class="table-scroll">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Accion</th>
+                <th>Usuario</th>
+                <th>Documento</th>
+                <th class="action-column">Eliminar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of documentHistory(credit)">
+                <td>{{ item.created_at | date:'short' }}</td>
+                <td>{{ item.action }}</td>
+                <td>{{ item.actor }}</td>
+                <td>{{ item.detail || '-' }}</td>
+                <td class="action-column">
+                  <button
+                    type="button"
+                    class="icon-delete-button"
+                    title="Eliminar documento"
+                    *ngIf="canDeleteDocumentFromHistory(credit, item); else noDocumentDelete"
+                    (click)="deleteDocumentFromHistory(credit, item)">
+                    Borrar
+                  </button>
+                  <ng-template #noDocumentDelete>
+                    <span class="no-action">-</span>
+                  </ng-template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" *ngIf="activeDetailTab() === 'alerts'">
+      <h3>Alertas</h3>
+      <form class="inline-form" (ngSubmit)="addAlert()">
+        <select name="alertType" [(ngModel)]="alert.type">
+          <option value="estudio">Estudio</option>
+          <option value="firmas">Firmas</option>
+          <option value="prenda_runt">Prenda/RUNT</option>
+          <option value="desembolso">Desembolso</option>
+          <option value="legalizacion">Legalizacion</option>
+          <option value="otro">Otro</option>
+        </select>
+        <input name="alertEmail" type="email" [(ngModel)]="alert.email_to" placeholder="Correo destinatario">
+        <input name="message" [(ngModel)]="alert.message" placeholder="Mensaje">
+        <section class="alert-attachments">
+          <strong>Documentos guardados para enviar</strong>
+          <div class="table-scroll mini-table-scroll" *ngIf="alertDocuments(credit).length">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Enviar</th>
+                  <th>Fecha</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Archivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let doc of alertDocuments(credit)">
+                  <td>
+                    <input
+                      class="table-checkbox"
+                      type="checkbox"
+                      [checked]="isAlertDocumentSelected(doc.id)"
+                      (change)="toggleAlertDocument(doc.id, $event)">
+                  </td>
+                  <td>{{ doc.created_at | date:'short' }}</td>
+                  <td>{{ doc.name }}</td>
+                  <td>{{ doc.type }}</td>
+                  <td>{{ doc.file_name || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <small class="empty-row" *ngIf="!alertDocuments(credit).length">
+            No hay documentos cargados disponibles para enviar.
+          </small>
+        </section>
+        <label class="file-field">
+          <span>Adjunto nuevo</span>
+          <input name="alertFile" type="file" (change)="onAlertFileSelected($event)">
+        </label>
+        <button type="submit">Crear</button>
+      </form>
+      <ul class="rows compact">
+        <li *ngFor="let item of credit.alerts">
+          <strong>{{ item.type }}</strong>
+          <span>{{ item.status }}</span>
+          <small>{{ item.message }}</small>
+          <small *ngIf="item.email_to">Correo: {{ item.email_to }} · {{ item.email_sent ? 'enviado' : 'no enviado' }}</small>
+          <small class="error" *ngIf="item.email_error">{{ item.email_error }}</small>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</main>
+</ng-template>

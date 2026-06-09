@@ -1,0 +1,55 @@
+services:
+  creditos_db:
+    image: postgres:16-alpine
+    container_name: creditos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: creditos
+      POSTGRES_USER: creditos
+      POSTGRES_PASSWORD: creditos
+    ports:
+      - "5440:5432"
+    volumes:
+      - creditos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creditos -d creditos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  creditos_backend:
+    build:
+      context: ./backend
+    container_name: creditos_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://creditos:creditos@creditos_db:5432/creditos
+      CORS_ORIGINS: http://localhost:4210,http://127.0.0.1:4210
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-creditos@localhost}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./backend/app:/app/app
+    depends_on:
+      creditos_db:
+        condition: service_healthy
+
+  creditos_frontend:
+    build:
+      context: ./frontend
+    container_name: creditos_frontend
+    restart: unless-stopped
+    ports:
+      - "4210:4210"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - creditos_backend
+
+volumes:
+  creditos_pgdata:
