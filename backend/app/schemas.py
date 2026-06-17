@@ -1,4 +1,4 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -201,6 +201,10 @@ class UserCreate(BaseModel):
     role: str = "user"
 
 
+class UserPasswordUpdate(BaseModel):
+    password: str = Field(min_length=6)
+
+
 class NotificationCreate(BaseModel):
     recipient_id: int
     subject: str = Field(min_length=3)
@@ -219,3 +223,21 @@ class NotificationRead(BaseModel):
     created_at: datetime
     sender: UserRead
     recipient: UserRead
+
+
+class MessageCreate(BaseModel):
+    recipient_id: int
+    content: str = Field(min_length=1)
+
+
+class MessageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sender_id: int
+    recipient_id: int
+    content: str
+    read: bool
+    created_at: datetime
+    sender_name: str | None = None
+

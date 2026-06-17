@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
-from app.routers import auth, catalogs, credits, notifications, users
+from app.routers import auth, catalogs, credits, notifications, users, chat
 from app.seed import seed_initial_data
 
 
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api")
     app.include_router(users.router, prefix="/api")
     app.include_router(notifications.router, prefix="/api")
+    app.include_router(chat.router, prefix="/api")
     return app
 
 

@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Bank, CreditRequest, DashboardSummary, Stage } from './api.models';
 
-const API_URL = 'http://localhost:8010/api';
+const API_URL = '/api';
 
 @Injectable({ providedIn: 'root' })
 export class CreditsApiService {
@@ -95,6 +95,10 @@ export class CreditsApiService {
 
   addBankLine(creditId: number, payload: Record<string, unknown>): Observable<unknown> {
     return this.http.post(`${API_URL}/credits/${creditId}/bank-lines`, payload);
+  }
+
+  deleteBankLine(creditId: number, lineId: number): Observable<void> {
+    return this.http.delete<void>(`${API_URL}/credits/${creditId}/bank-lines/${lineId}`);
   }
 
   addDocument(creditId: number, payload: Record<string, unknown>): Observable<unknown> {

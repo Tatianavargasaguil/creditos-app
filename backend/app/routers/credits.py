@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+﻿from datetime import date, datetime, time
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from io import BytesIO
@@ -10,14 +10,19 @@ from sqlalchemy.orm import Session, joinedload
 from app import models, schemas
 from app.database import get_db
 from app.email_service import send_alert_email
-from app.security import get_current_user, require_admin
+from app.security import get_current_user, require_admin, require_credit_operator
 
 router = APIRouter(prefix="/credits", tags=["credits"])
 
 
 def _next_reference(db: Session) -> str:
-    count = db.query(models.CreditRequest).count() + 1
-    return f"CRE-{count:05d}"
+    next_number = (db.query(func.coalesce(func.max(models.CreditRequest.id), 0)).scalar() or 0) + 1
+    while True:
+        reference = f"CRE-{next_number:05d}"
+        exists = db.query(models.CreditRequest.id).filter(models.CreditRequest.reference == reference).first()
+        if not exists:
+            return reference
+        next_number += 1
 
 
 def _default_stage(db: Session) -> models.Stage:
@@ -42,6 +47,90 @@ def _credit_query(db: Session):
         )
     )
 
+def _advisor_credit_response(credit: models.CreditRequest) -> schemas.CreditRequestRead:
+    data = schemas.CreditRequestRead.model_validate(credit)
+    return data.model_copy(update={
+        "phone": None,
+        "brand": None,
+        "line": None,
+        "model": None,
+        "sale_price": 0,
+        "down_payment": 0,
+        "proforma_invoice_ref": None,
+        "final_invoice_ref": None,
+        "viability_bank_id": None,
+        "selected_bank_id": None,
+        "disbursement_bank_id": None,
+        "approval_conditions": None,
+        "observations": None,
+        "rejection_reason": None,
+        "ok_runt": False,
+        "ok_runt_at": None,
+        "runt_observation": None,
+        "insured_ok": False,
+        "policy_issued": False,
+        "insurance_company": None,
+        "policy_observation": None,
+        "disbursed_value": 0,
+        "ownership_card_issued": False,
+        "ownership_card_delivery_date": None,
+        "viability_bank": None,
+        "selected_bank": None,
+        "disbursement_bank": None,
+        "documents": [],
+        "alerts": [],
+        "history": [],
+    })
+
+HISTORY_FIELD_LABELS = {
+    "customer_name": "Cliente",
+    "document_type": "Tipo de documento",
+    "document_number": "Numero de documento",
+    "phone": "Celular",
+    "plate": "Placa",
+    "vin": "VIN",
+    "brand": "Marca",
+    "line": "Linea",
+    "model": "Modelo",
+    "advisor_name": "Asesor",
+    "showroom": "Vitrina",
+    "business_type": "Tipo de negocio",
+    "sale_price": "Precio de venta",
+    "down_payment": "Cuota inicial",
+    "stage_id": "Etapa",
+    "viability_bank_id": "Banco de viabilidad",
+    "selected_bank_id": "Banco firmado",
+    "disbursement_bank_id": "Banco de desembolso",
+    "rejection_reason": "Motivo de rechazo",
+    "ok_runt": "OK RUNT / Preinscripcion de prenda",
+    "runt_observation": "Observacion RUNT",
+    "policy_issued": "Poliza emitida",
+    "insurance_company": "Entidad aseguradora",
+    "policy_observation": "Observacion de poliza",
+    "disbursed_value": "Valor desembolsado",
+    "ownership_card_issued": "Tarjeta de propiedad emitida",
+    "ownership_card_delivery_date": "Fecha entrega tarjeta de propiedad",
+    "proforma_invoice_ref": "Factura proforma",
+    "final_invoice_ref": "Factura definitiva",
+    "approval_conditions": "Condiciones de aprobacion",
+    "observations": "Observaciones",
+}
+
+
+def _humanize_history_detail(detail: str | None) -> str:
+    if not detail:
+        return "-"
+
+    clean_detail = detail.strip()
+    if clean_detail.startswith("Etapa anterior ID "):
+        return clean_detail.replace("Etapa anterior ID", "Etapa anterior").replace(", nueva ID", ", nueva etapa")
+
+    parts = [part.strip() for part in clean_detail.split(",") if part.strip()]
+    should_translate = any(part in HISTORY_FIELD_LABELS or "_" in part for part in parts)
+    if not should_translate:
+        return clean_detail
+
+    return ", ".join(HISTORY_FIELD_LABELS.get(part, part.replace("_", " ").title()) for part in parts)
 
 def _add_history(db: Session, credit_id: int, action: str, detail: str | None = None, actor: str = "Sistema") -> None:
     db.add(models.CreditHistory(credit_id=credit_id, actor=actor, action=action, detail=detail))
@@ -52,11 +141,23 @@ def list_credits(
     search: str | None = Query(default=None),
     stage_code: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
     query = _credit_query(db)
-    if search:
-        like = f"%{search}%"
+    clean_search = (search or "").strip()
+    if current_user.role == models.UserRole.advisor:
+        if not clean_search:
+            return []
+        like = f"%{clean_search}%"
+        query = query.filter(
+            or_(
+                models.CreditRequest.document_number.ilike(like),
+                models.CreditRequest.plate.ilike(like),
+                models.CreditRequest.vin.ilike(like),
+            )
+        )
+    elif clean_search:
+        like = f"%{clean_search}%"
         query = query.filter(
             or_(
                 models.CreditRequest.reference.ilike(like),
@@ -68,14 +169,17 @@ def list_credits(
         )
     if stage_code:
         query = query.join(models.Stage).filter(models.Stage.code == stage_code)
-    return query.order_by(models.CreditRequest.created_at.desc()).all()
+    credits = query.order_by(models.CreditRequest.created_at.desc()).all()
+    if current_user.role == models.UserRole.advisor:
+        return [_advisor_credit_response(credit) for credit in credits]
+    return credits
 
 
 @router.post("", response_model=schemas.CreditRequestRead, status_code=status.HTTP_201_CREATED)
 def create_credit(
     payload: schemas.CreditRequestCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     stage_id = payload.stage_id or _default_stage(db).id
     values = payload.model_dump(exclude={"stage_id"})
@@ -88,7 +192,9 @@ def create_credit(
 
 
 @router.get("/reports/summary", response_model=schemas.DashboardSummary)
-def summary(db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
+def summary(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role == models.UserRole.advisor:
+        return schemas.DashboardSummary(total_requests=0, active_requests=0, approved_requests=0, disbursed_value=0, by_stage={}, by_selected_bank={})
     total = db.query(models.CreditRequest).count()
     active = (
         db.query(models.CreditRequest)
@@ -130,7 +236,7 @@ def detail_report(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_user),
+    _current_user: models.User = Depends(require_credit_operator),
 ):
     query = _credit_query(db)
     if search:
@@ -200,6 +306,55 @@ def _join_lines(values: list[str]) -> str:
     return "\n".join(value for value in values if value)
 
 
+BANK_TYPE_LABELS = {
+    "viabilidad": "Viabilidad",
+    "estudio": "Estudio",
+    "aprobacion": "Aprobacion",
+    "rechazo": "Rechazo",
+    "desembolso": "Desembolso",
+}
+
+
+BANK_STATUS_LABELS = {
+    "pendiente": "Pendiente",
+    "radicado": "Radicado",
+    "aprobado": "Aprobado",
+    "negado": "Negado",
+    "desembolsado": "Desembolsado",
+}
+
+
+def _bank_names_by_type(credit: models.CreditRequest, bank_type: str) -> str:
+    names: list[str] = []
+    for line in credit.bank_lines:
+        if line.type != bank_type or not line.bank:
+            continue
+        if line.bank.name not in names:
+            names.append(line.bank.name)
+    return ", ".join(names)
+
+
+def _bank_details_by_type(credit: models.CreditRequest, bank_type: str) -> str:
+    values: list[str] = []
+    for line in credit.bank_lines:
+        if line.type != bank_type:
+            continue
+        bank_name = line.bank.name if line.bank else f"Banco ID {line.bank_id}"
+        notes = line.conditions or line.rejection_reason or "-"
+        values.append(
+            " | ".join(
+                [
+                    bank_name,
+                    BANK_STATUS_LABELS.get(line.status, line.status),
+                    f"radicado: {line.filed_at or '-'}",
+                    f"respuesta: {line.answered_at or '-'}",
+                    f"observacion: {notes}",
+                ]
+            )
+        )
+    return _join_lines(values)
+
+
 @router.get("/reports/excel")
 def excel_report(
     search: str | None = Query(default=None),
@@ -208,7 +363,7 @@ def excel_report(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_user),
+    _current_user: models.User = Depends(require_credit_operator),
 ):
     query = _apply_report_filters(_credit_query(db), search, stage_id, bank_id, date_from, date_to)
     credits = query.order_by(models.CreditRequest.created_at.desc()).all()
@@ -219,7 +374,8 @@ def excel_report(
     headers = [
         "Referencia",
         "Cliente",
-        "Documento",
+        "Tipo documento",
+        "Numero documento",
         "Celular",
         "Placa",
         "VIN",
@@ -234,9 +390,15 @@ def excel_report(
         "Cuota inicial",
         "Valor financiado",
         "Valor desembolsado",
-        "Banco viabilidad",
-        "Banco seleccionado",
+        "Bancos viabilidad",
+        "Detalle viabilidad",
+        "Bancos estudio",
+        "Detalle estudio",
+        "Bancos aprobados",
+        "Detalle aprobacion",
+        "Banco firmado",
         "Banco desembolso",
+        "Detalle desembolso",
         "Motivo rechazo",
         "OK RUNT",
         "Observacion RUNT",
@@ -246,7 +408,6 @@ def excel_report(
         "Observacion poliza",
         "Tarjeta propiedad emitida",
         "Fecha entrega tarjeta",
-        "Bancos / radicaciones",
         "Documentos",
         "Alertas",
         "Historial / etapas",
@@ -258,10 +419,6 @@ def excel_report(
         cell.fill = PatternFill("solid", fgColor="1967D2")
 
     for credit in credits:
-        bank_lines = _join_lines([
-            f"{line.bank.name} | {line.type} | {line.status} | radicado: {line.filed_at or '-'} | respuesta: {line.answered_at or '-'} | condiciones: {line.conditions or '-'}"
-            for line in credit.bank_lines
-        ])
         documents = _join_lines([
             f"{document.name} | {document.type} | {document.file_name or '-'} | {document.file_size or 0} bytes"
             for document in credit.documents
@@ -271,13 +428,14 @@ def excel_report(
             for alert in credit.alerts
         ])
         history = _join_lines([
-            f"{item.created_at} | {item.actor} | {item.action} | {item.detail or '-'}"
+            f"{item.created_at} | {item.actor} | {item.action} | {_humanize_history_detail(item.detail)}"
             for item in credit.history
         ])
         sheet.append([
             credit.reference,
             credit.customer_name,
-            f"{credit.document_type or ''} {credit.document_number or ''}".strip(),
+            credit.document_type,
+            credit.document_number,
             credit.phone,
             credit.plate,
             credit.vin,
@@ -292,9 +450,15 @@ def excel_report(
             float(credit.down_payment or 0),
             credit.financed_value,
             float(credit.disbursed_value or 0),
-            credit.viability_bank.name if credit.viability_bank else "",
+            _bank_names_by_type(credit, "viabilidad") or (credit.viability_bank.name if credit.viability_bank else ""),
+            _bank_details_by_type(credit, "viabilidad"),
+            _bank_names_by_type(credit, "estudio"),
+            _bank_details_by_type(credit, "estudio"),
+            _bank_names_by_type(credit, "aprobacion"),
+            _bank_details_by_type(credit, "aprobacion"),
             credit.selected_bank.name if credit.selected_bank else "",
-            credit.disbursement_bank.name if credit.disbursement_bank else "",
+            _bank_names_by_type(credit, "desembolso") or (credit.disbursement_bank.name if credit.disbursement_bank else ""),
+            _bank_details_by_type(credit, "desembolso"),
             credit.rejection_reason,
             "Si" if credit.ok_runt else "No",
             credit.runt_observation,
@@ -304,7 +468,6 @@ def excel_report(
             credit.policy_observation,
             "Si" if credit.ownership_card_issued else "No",
             credit.ownership_card_delivery_date,
-            bank_lines,
             documents,
             alerts,
             history,
@@ -330,7 +493,7 @@ def excel_report(
 
 
 @router.get("/{credit_id}", response_model=schemas.CreditRequestRead)
-def get_credit(credit_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(get_current_user)):
+def get_credit(credit_id: int, db: Session = Depends(get_db), _current_user: models.User = Depends(require_credit_operator)):
     credit = _credit_query(db).filter(models.CreditRequest.id == credit_id).first()
     if not credit:
         raise HTTPException(status_code=404, detail="Credito no encontrado")
@@ -342,7 +505,7 @@ def update_credit(
     credit_id: int,
     payload: schemas.CreditRequestUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     credit = db.get(models.CreditRequest, credit_id)
     if not credit:
@@ -362,7 +525,7 @@ def update_credit(
             current_user.full_name,
         )
     else:
-        _add_history(db, credit.id, "Credito actualizado", ", ".join(values.keys()), current_user.full_name)
+        _add_history(db, credit.id, "Credito actualizado", _humanize_history_detail(", ".join(values.keys())), current_user.full_name)
     db.commit()
     return _credit_query(db).filter(models.CreditRequest.id == credit.id).one()
 
@@ -391,7 +554,7 @@ def add_bank_line(
     credit_id: int,
     payload: schemas.BankLineCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     if not db.get(models.CreditRequest, credit_id):
         raise HTTPException(status_code=404, detail="Credito no encontrado")
@@ -404,12 +567,36 @@ def add_bank_line(
     return line
 
 
+@router.delete("/{credit_id}/bank-lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_bank_line(
+    credit_id: int,
+    line_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_credit_operator),
+):
+    line = (
+        db.query(models.CreditBankLine)
+        .options(joinedload(models.CreditBankLine.bank))
+        .filter(models.CreditBankLine.credit_id == credit_id, models.CreditBankLine.id == line_id)
+        .first()
+    )
+    if not line:
+        raise HTTPException(status_code=404, detail="Banco no encontrado en el credito")
+
+    bank_name = line.bank.name if line.bank else f"Banco ID {line.bank_id}"
+    detail = f"{bank_name} | {BANK_TYPE_LABELS.get(line.type, line.type)} | {BANK_STATUS_LABELS.get(line.status, line.status)}"
+    db.delete(line)
+    _add_history(db, credit_id, "Banco eliminado", detail, current_user.full_name)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/{credit_id}/documents", response_model=schemas.DocumentRead, status_code=status.HTTP_201_CREATED)
 def add_document(
     credit_id: int,
     payload: schemas.DocumentCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     if not db.get(models.CreditRequest, credit_id):
         raise HTTPException(status_code=404, detail="Credito no encontrado")
@@ -430,7 +617,7 @@ def upload_document(
     observation: str | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     if not db.get(models.CreditRequest, credit_id):
         raise HTTPException(status_code=404, detail="Credito no encontrado")
@@ -462,7 +649,7 @@ def download_document(
     credit_id: int,
     document_id: int,
     db: Session = Depends(get_db),
-    _current_user: models.User = Depends(get_current_user),
+    _current_user: models.User = Depends(require_credit_operator),
 ):
     document = (
         db.query(models.CreditDocument)
@@ -512,7 +699,7 @@ def add_alert(
     selected_document_ids: list[int] = Form([]),
     file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(require_credit_operator),
 ):
     if not db.get(models.CreditRequest, credit_id):
         raise HTTPException(status_code=404, detail="Credito no encontrado")
@@ -586,3 +773,8 @@ def add_alert(
     db.commit()
     db.refresh(alert)
     return alert
+
+
+
+
+

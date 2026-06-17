@@ -1,0 +1,91 @@
+<div class="chat-widget">
+  <!-- Botón flotante de chat -->
+  <button class="chat-toggle-btn" (click)="toggleChat()" title="Abrir chat">
+    💬
+    <span *ngIf="chatService.unreadCount() > 0" class="unread-badge">
+      {{ chatService.unreadCount() }}
+    </span>
+  </button>
+
+  <!-- Panel del chat -->
+  <div class="chat-panel" *ngIf="isOpen()">
+    <div class="chat-header">
+      <h3>Chat Interno</h3>
+      <button class="close-btn" (click)="closeChat()">✕</button>
+    </div>
+
+    <div class="chat-container">
+      <!-- Sidebar de conversaciones -->
+      <div class="chat-sidebar">
+        <h4>Contactos</h4>
+        <div class="contacts-list">
+          <div *ngFor="let user of availableUsers()"
+               [class.active]="activeUser()?.id === user.id"
+               [class.has-unread]="getUnreadCount(user.id) > 0"
+               (click)="selectUser(user)"
+               class="contact-item">
+            <div class="contact-info">
+              <div class="contact-name">{{ user.name }}</div>
+              <div class="contact-role">{{ user.role }}</div>
+            </div>
+            <div *ngIf="getUnreadCount(user.id) > 0" class="unread-indicator">
+              {{ getUnreadCount(user.id) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área de mensajes -->
+      <div class="chat-main">
+        <div *ngIf="activeUser(); else noUserSelected" class="chat-content">
+          <!-- Encabezado del usuario activo -->
+          <div class="active-user-header">
+            <div class="user-details">
+              <h4>{{ activeUser()!.name }}</h4>
+              <p>{{ activeUser()!.email }}</p>
+            </div>
+          </div>
+
+          <!-- Mensajes -->
+          <div class="chat-messages">
+            <div *ngIf="isLoading()" class="loading">Cargando mensajes...</div>
+            
+            <div *ngFor="let msg of currentMessages()"
+                 [class.sent]="isCurrentUserSender(msg)"
+                 [class.received]="!isCurrentUserSender(msg)"
+                 [class.unread]="!isCurrentUserSender(msg) && !msg.read"
+                 class="message">
+              <div class="message-wrapper">
+                <div class="message-content">{{ msg.content }}</div>
+                <button *ngIf="isCurrentUserSender(msg)"
+                        class="delete-msg-btn"
+                        (click)="deleteMessage(msg.id)"
+                        title="Eliminar mensaje">
+                  ✕
+                </button>
+              </div>
+              <div class="message-time">{{ msg.created_at | date:'short' }}</div>
+            </div>
+          </div>
+
+          <!-- Input de mensaje -->
+          <div class="chat-input">
+            <input type="text"
+                   [(ngModel)]="newMessage"
+                   (keyup.enter)="sendMessage()"
+                   placeholder="Escribe tu mensaje...">
+            <button (click)="sendMessage()" [disabled]="!newMessage().trim()">
+              Enviar
+            </button>
+          </div>
+        </div>
+
+        <ng-template #noUserSelected>
+          <div class="empty-state">
+            <p>Selecciona un contacto para comenzar</p>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

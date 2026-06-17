@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  creditos_db:
+    image: postgres:16-alpine
+    container_name: creditos_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-creditos}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5440:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  creditos_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: creditos_backend
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@creditos_db:5432/${DB_NAME:-creditos}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
+      ENVIRONMENT: production
+    ports:
+      - "8010:8000"
+    depends_on:
+      creditos_db:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  creditos_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: creditos_frontend
+    ports:
+      - "4210:4210"
+    environment:
+      NGINX_PORT: 4210
+    depends_on:
+      - creditos_backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:4210"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  creditos_nginx:
+    image: nginx:alpine
+    container_name: creditos_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - creditos_frontend
+      - creditos_backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: creditos-network

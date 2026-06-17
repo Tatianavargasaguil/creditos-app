@@ -1,0 +1,12 @@
+{
+  "/api": {
+    "target": "http://creditos_backend:8010",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/health": {
+    "target": "http://creditos_backend:8010",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

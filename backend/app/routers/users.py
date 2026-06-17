@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -22,7 +22,7 @@ def create_user(
     db: Session = Depends(get_db),
     _admin: models.User = Depends(require_admin),
 ):
-    role = payload.role if payload.role in ("admin", "user") else "user"
+    role = payload.role if payload.role in ("admin", "user", "advisor") else "user"
     exists = db.query(models.User).filter(models.User.username == payload.username).first()
     if exists:
         raise HTTPException(status_code=400, detail="El usuario ya existe")
@@ -35,6 +35,23 @@ def create_user(
         active=True,
     )
     db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/{user_id}/password", response_model=schemas.UserRead)
+def update_user_password(
+    user_id: int,
+    payload: schemas.UserPasswordUpdate,
+    db: Session = Depends(get_db),
+    _admin: models.User = Depends(require_admin),
+):
+    user = db.get(models.User, user_id)
+    if not user or not user.active:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    user.password_hash = hash_password(payload.password)
     db.commit()
     db.refresh(user)
     return user
@@ -57,3 +74,4 @@ def delete_user(
     user.active = False
     db.commit()
     return None
+

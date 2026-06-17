@@ -1,10 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+﻿import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { tap } from 'rxjs';
 import { AuthUser, LoginResponse } from './auth.models';
 import { NotificationItem } from './notification.models';
 
-const API_URL = 'http://localhost:8010/api';
+const API_URL = '/api';
 const TOKEN_KEY = 'creditos_token';
 const USER_KEY = 'creditos_user';
 
@@ -32,12 +32,16 @@ export class AuthService {
     return this.http.get<AuthUser[]>(`${API_URL}/users`);
   }
 
-  createUser(payload: { username: string; full_name: string; password: string; role: 'admin' | 'user' }) {
+  createUser(payload: { username: string; full_name: string; password: string; role: 'admin' | 'user' | 'advisor' }) {
     return this.http.post<AuthUser>(`${API_URL}/users`, payload);
   }
 
   deleteUser(userId: number) {
     return this.http.delete<void>(`${API_URL}/users/${userId}`);
+  }
+
+  updateUserPassword(userId: number, password: string) {
+    return this.http.patch<AuthUser>(`${API_URL}/users/${userId}/password`, { password });
   }
 
   notificationRecipients() {
@@ -74,3 +78,4 @@ export class AuthService {
     }
   }
 }
+

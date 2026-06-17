@@ -44,6 +44,7 @@ class AlertStatus(str, Enum):
 class UserRole(str, Enum):
     admin = "admin"
     user = "user"
+    advisor = "advisor"
 
 
 class User(Base):
@@ -235,3 +236,17 @@ class Notification(Base):
     sender: Mapped[User] = relationship(foreign_keys=[sender_id])
     recipient: Mapped[User] = relationship(foreign_keys=[recipient_id])
     credit: Mapped[CreditRequest | None] = relationship()
+
+
+class Message(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[str] = mapped_column(Text)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    sender: Mapped[User] = relationship(foreign_keys=[sender_id], backref="sent_messages")
+    recipient: Mapped[User] = relationship(foreign_keys=[recipient_id], backref="received_messages")

@@ -86,3 +86,12 @@ def require_admin(current_user: models.User = Depends(get_current_user)) -> mode
     if current_user.role != models.UserRole.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requiere rol administrador")
     return current_user
+
+
+def require_credit_operator(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if current_user.role not in (models.UserRole.admin, models.UserRole.user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requiere rol de creditos",
+        )
+    return current_user
