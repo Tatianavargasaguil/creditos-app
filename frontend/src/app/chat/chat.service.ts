@@ -24,7 +24,7 @@ export interface ChatUser {
   providedIn: 'root'
 })
 export class ChatService {
-  private apiUrl = 'http://localhost:8010/api/chat';
+  private apiUrl = '/api/chat';
   
   messages = signal<Message[]>([]);
   conversations = signal<ChatUser[]>([]);
