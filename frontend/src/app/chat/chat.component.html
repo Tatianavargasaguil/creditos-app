@@ -1,4 +1,4 @@
-<div class="chat-widget">
+<div class="chat-widget" *ngIf="isAuthenticated()">
   <!-- Botón flotante de chat -->
   <button class="chat-toggle-btn" (click)="toggleChat()" title="Abrir chat">
     💬

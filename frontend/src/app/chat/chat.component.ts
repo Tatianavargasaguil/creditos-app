@@ -24,7 +24,12 @@ export class ChatComponent implements OnInit {
   isLoading = signal(false);
   unreadByUser = signal<Map<number, number>>(new Map());
 
+  // Show chat only if user is authenticated
+  isAuthenticated = computed(() => !!this.authService.user());
+
   ngOnInit(): void {
+    if (!this.isAuthenticated()) return;
+    
     this.loadAvailableUsers();
     this.loadUnreadCounts();
     // Recargar usuarios cada 5 segundos
