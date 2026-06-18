@@ -6,6 +6,7 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.routers import auth, catalogs, credits, notifications, users, chat
 from app.seed import seed_initial_data
+from app.security_middleware import setup_security_middleware
 
 
 def ensure_development_columns() -> None:
@@ -25,6 +26,10 @@ def ensure_development_columns() -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
+    
+    # Agregar middlewares de seguridad
+    setup_security_middleware(app)
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

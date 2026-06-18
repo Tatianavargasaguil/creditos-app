@@ -28,23 +28,23 @@ class BankRead(BaseModel):
 
 
 class CreditRequestBase(BaseModel):
-    odoo_order_ref: str | None = None
-    advisor_name: str | None = None
-    showroom: str | None = None
-    business_type: str | None = None
-    document_type: str | None = None
-    document_number: str | None = None
-    customer_name: str = Field(min_length=2)
-    phone: str | None = None
-    plate: str | None = None
-    vin: str | None = None
-    brand: str | None = None
-    line: str | None = None
-    model: str | None = None
+    odoo_order_ref: str | None = Field(None, max_length=100)
+    advisor_name: str | None = Field(None, max_length=255)
+    showroom: str | None = Field(None, max_length=255)
+    business_type: str | None = Field(None, max_length=100)
+    document_type: str | None = Field(None, max_length=50)
+    document_number: str | None = Field(None, max_length=50)
+    customer_name: str = Field(min_length=2, max_length=255)
+    phone: str | None = Field(None, max_length=20)
+    plate: str | None = Field(None, max_length=20)
+    vin: str | None = Field(None, max_length=17)
+    brand: str | None = Field(None, max_length=100)
+    line: str | None = Field(None, max_length=100)
+    model: str | None = Field(None, max_length=100)
     sale_price: float = 0
     down_payment: float = 0
-    proforma_invoice_ref: str | None = None
-    final_invoice_ref: str | None = None
+    proforma_invoice_ref: str | None = Field(None, max_length=100)
+    final_invoice_ref: str | None = Field(None, max_length=100)
     viability_bank_id: int | None = None
     selected_bank_id: int | None = None
     disbursement_bank_id: int | None = None
@@ -184,8 +184,8 @@ class UserRead(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=100)
+    password: str = Field(min_length=6, max_length=255)
 
 
 class LoginResponse(BaseModel):
@@ -195,9 +195,9 @@ class LoginResponse(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3)
-    full_name: str = Field(min_length=3)
-    password: str = Field(min_length=6)
+    username: str = Field(min_length=3, max_length=100)
+    full_name: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=255)
     role: str = "user"
 
 
