@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     container_name: creditos_db
     environment:
-      POSTGRES_USER: creditos_user
+      POSTGRES_USER: creditos
       POSTGRES_PASSWORD: Creditos2026Secure!
       POSTGRES_DB: creditos
     volumes:
@@ -14,7 +14,7 @@ services:
       - "5440:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U creditos"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     container_name: creditos_backend
     environment:
-      DATABASE_URL: postgresql://creditos_user:Creditos2026Secure!@creditos_db:5432/creditos
+      DATABASE_URL: postgresql://creditos:Creditos2026Secure!@creditos_db:5432/creditos
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
       ENVIRONMENT: production
     ports:
