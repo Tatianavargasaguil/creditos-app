@@ -30,8 +30,12 @@ export class ChatComponent implements OnInit {
   ngOnInit(): void {
     if (!this.isAuthenticated()) return;
     
-    this.loadAvailableUsers();
-    this.loadUnreadCounts();
+    // Delay slightly to ensure token is fully available
+    setTimeout(() => {
+      this.loadAvailableUsers();
+      this.loadUnreadCounts();
+    }, 500);
+    
     // Recargar usuarios cada 5 segundos
     setInterval(() => this.loadAvailableUsers(), 5000);
     // Recargar unread counts cada 3 segundos
@@ -47,7 +51,10 @@ export class ChatComponent implements OnInit {
         });
         this.unreadByUser.set(unreadMap);
       },
-      error: (err: unknown) => console.error('Error loading unread counts:', err)
+      error: (err: unknown) => {
+        console.error('Error loading unread counts:', err);
+        // Don't break the app if chat fails
+      }
     });
   }
 
