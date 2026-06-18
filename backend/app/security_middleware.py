@@ -25,7 +25,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         sensitive_endpoints = ["/api/auth/login", "/api/users"]
         is_sensitive = any(request.url.path.startswith(ep) for ep in sensitive_endpoints)
         
-        limit = 5 if is_sensitive and request.method == "POST" else self.requests_per_minute
+        # Rate limit: 30 intentos por minuto para login, 100 para otros
+        limit = 30 if is_sensitive and request.method == "POST" else self.requests_per_minute
         
         # Limpiar requests antiguos
         now = datetime.now()
