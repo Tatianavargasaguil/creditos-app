@@ -26,7 +26,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "buildTarget": "creditos-frontend:build"
+            "buildTarget": "creditos-frontend:build",
+            "allowedHosts": ["creditos.carmaxcolombia.com.co", "localhost", "127.0.0.1"]
           }
         }
       }
