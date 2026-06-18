@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: creditos_db
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-creditos}
+      POSTGRES_USER: creditos_user
+      POSTGRES_PASSWORD: Creditos2026Secure!
+      POSTGRES_DB: creditos
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     container_name: creditos_backend
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@creditos_db:5432/${DB_NAME:-creditos}
+      DATABASE_URL: postgresql://creditos_user:Creditos2026Secure!@creditos_db:5432/creditos
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
       ENVIRONMENT: production
     ports:
