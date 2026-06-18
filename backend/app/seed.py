@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from . import models
-from app.security import hash_password
+from .security import hash_password
 
 
 STAGES = [
