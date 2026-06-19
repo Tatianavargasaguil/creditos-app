@@ -838,6 +838,24 @@ button[type="submit"],
   font-weight: 800;
 }
 
+.icon-download-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 100px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: #e8f0fe;
+  border: 1px solid #4285f4;
+  color: #1f73c7;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.icon-download-button:hover {
+  background: #d2e3fc;
+}
+
 .no-action {
   color: #9aa8b7;
   font-weight: 700;

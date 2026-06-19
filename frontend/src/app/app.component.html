@@ -380,6 +380,7 @@
                 <th>Acción</th>
                 <th>Usuario</th>
                 <th>Documento</th>
+                <th class="action-column">Descargar</th>
                 <th class="action-column">Eliminar</th>
               </tr>
             </thead>
@@ -389,6 +390,19 @@
                 <td>{{ item.action }}</td>
                 <td>{{ item.actor }}</td>
                 <td>{{ item.detail || '-' }}</td>
+                <td class="action-column">
+                  <button
+                    type="button"
+                    class="icon-download-button"
+                    title="Descargar documento"
+                    *ngIf="(auth.user()?.role === 'admin' || auth.user()?.role === 'user') && canDeleteDocumentFromHistory(credit, item); else noDocumentDownload"
+                    (click)="downloadDocument(credit, item)">
+                    Descargar
+                  </button>
+                  <ng-template #noDocumentDownload>
+                    <span class="no-action">-</span>
+                  </ng-template>
+                </td>
                 <td class="action-column">
                   <button
                     type="button"

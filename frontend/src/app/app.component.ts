@@ -763,6 +763,22 @@ export class AppComponent implements OnInit {
     this.deleteDocument(documentId);
   }
 
+  downloadDocument(credit: CreditRequest, item: CreditHistory): void {
+    const documentId = this.documentIdFromHistory(credit, item);
+    if (!documentId) {
+      return;
+    }
+    
+    this.api.downloadDocument(credit.id, documentId).subscribe((blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = item.detail || `documento_${documentId}`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    });
+  }
+
   private normalizeDocumentName(value: string | null | undefined): string {
     return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
