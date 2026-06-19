@@ -28,6 +28,12 @@ services:
       DATABASE_URL: postgresql://creditos_user:Creditos2026Secure!@creditos_db:5432/creditos
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
       ENVIRONMENT: production
+      SMTP_HOST: smtp-mail.outlook.com
+      SMTP_PORT: 587
+      SMTP_USER: creditos@carmaxcolombia.com.co
+      SMTP_PASSWORD: "@Carmax2026**"
+      SMTP_FROM: creditos@carmaxcolombia.com.co
+      SMTP_USE_TLS: "true"
     ports:
       - "8010:8000"
     depends_on:
