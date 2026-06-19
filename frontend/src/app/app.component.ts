@@ -6,12 +6,11 @@ import { AuthUser } from './core/auth.models';
 import { AuthService } from './core/auth.service';
 import { CreditsApiService } from './core/credits-api.service';
 import { NotificationItem } from './core/notification.models';
-import { ChatComponent } from './chat/chat.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, ChatComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './app.component.html'
 })
 export class AppComponent implements OnInit {
