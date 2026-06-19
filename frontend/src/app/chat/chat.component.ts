@@ -28,18 +28,7 @@ export class ChatComponent implements OnInit {
   isAuthenticated = computed(() => !!this.authService.user());
 
   ngOnInit(): void {
-    if (!this.isAuthenticated()) return;
-    
-    // Delay slightly to ensure token is fully available
-    setTimeout(() => {
-      this.loadAvailableUsers();
-      this.loadUnreadCounts();
-    }, 500);
-    
-    // Recargar usuarios cada 5 segundos
-    setInterval(() => this.loadAvailableUsers(), 5000);
-    // Recargar unread counts cada 3 segundos
-    setInterval(() => this.loadUnreadCounts(), 3000);
+    // Chat functionality disabled - skip all initialization
   }
 
   loadUnreadCounts(): void {
