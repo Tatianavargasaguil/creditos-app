@@ -25,8 +25,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         sensitive_endpoints = ["/api/auth/login", "/api/users"]
         is_sensitive = any(request.url.path.startswith(ep) for ep in sensitive_endpoints)
         
-        # Rate limit: 30 intentos por minuto para login, 100 para otros
-        limit = 30 if is_sensitive and request.method == "POST" else self.requests_per_minute
+        # Rate limit: 100 intentos por minuto para login, 500 para otros
+        limit = 100 if is_sensitive and request.method == "POST" else self.requests_per_minute
         
         # Limpiar requests antiguos
         now = datetime.now()
@@ -56,4 +56,4 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 def setup_security_middleware(app):
     """Configurar todos los middlewares de seguridad"""
-    app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=500)
