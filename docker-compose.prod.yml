@@ -1,4 +1,4 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   creditos_db:
@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://creditos_user:Creditos2026Secure!@creditos_db:5432/creditos
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this}
       ENVIRONMENT: production
+      CORS_ORIGINS: "https://creditos.carmaxcolombia.com.co,https://carmaxcolombia.com.co"
       SMTP_HOST: smtp-mail.outlook.com
       SMTP_PORT: 587
       SMTP_USER: creditos@carmaxcolombia.com.co
@@ -87,3 +88,4 @@ volumes:
 networks:
   default:
     name: creditos-network
+
