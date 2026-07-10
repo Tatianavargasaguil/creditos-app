@@ -17,7 +17,7 @@ STAGES = [
 ]
 
 BANKS = [
-    ("Confiemza", 10, False, False, False, False),
+    ("Confirmeza", 10, False, False, False, False),
     ("Apoyautos", 20, False, False, False, False),
     ("Davivienda", 30, False, False, False, False),
     ("Movilize", 40, True, True, True, True),
