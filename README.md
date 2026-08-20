@@ -59,15 +59,18 @@ Mientras no exista esa integracion, el aplicativo opera con creacion manual mini
 
 ## Correos de alertas
 
-Para enviar alertas por correo, configura SMTP en un archivo `.env` basado en `.env.example`:
+Para enviar alertas por correo, configura Microsoft Graph API con OAuth 2.0 client credentials en un archivo `.env` basado en `.env.example`:
 
 ```txt
-SMTP_HOST=smtp.office365.com
-SMTP_PORT=587
-SMTP_USER=correo@empresa.com
-SMTP_PASSWORD=clave
-SMTP_FROM=correo@empresa.com
-SMTP_USE_TLS=true
+GRAPH_TENANT_ID=tenant-id-entregado-por-microsoft
+GRAPH_CLIENT_ID=client-id-del-app-registration
+GRAPH_CLIENT_SECRET=client-secret-del-app-registration
+GRAPH_MAIL_FROM=creditos@carmaxcolombia.com.co
+GRAPH_SAVE_TO_SENT_ITEMS=true
 ```
 
-Si no hay SMTP configurado, la alerta se guarda igual y queda marcada como fallida con el error `SMTP no configurado`.
+El App Registration debe tener permiso de Microsoft Graph `Mail.Send` de tipo `Application` con admin consent. Idealmente debe estar limitado al buzon `creditos@carmaxcolombia.com.co` desde Microsoft Entra/Exchange.
+
+Los adjuntos enviados directamente por esta integracion deben ser menores a 3 MB. Para adjuntos mayores, Microsoft Graph requiere crear un borrador y usar upload session.
+
+Si Microsoft Graph no esta configurado, la alerta se guarda igual y queda marcada como fallida con el detalle de configuracion faltante.

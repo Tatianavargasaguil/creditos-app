@@ -56,7 +56,11 @@ nano .env
 DB_USER=postgres
 DB_PASSWORD=pon_una_password_fuerte_aqui
 DB_NAME=creditos
-JWT_SECRET=pon_un_string_largo_y_aleatorio_aqui
+AUTH_SECRET=pon_un_string_largo_y_aleatorio_aqui
+GRAPH_TENANT_ID=tenant-id-entregado-por-microsoft
+GRAPH_CLIENT_ID=client-id-del-app-registration
+GRAPH_CLIENT_SECRET=client-secret-del-app-registration
+GRAPH_MAIL_FROM=creditos@carmaxcolombia.com.co
 ```
 
 Para salvar en nano:

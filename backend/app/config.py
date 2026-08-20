@@ -10,12 +10,11 @@ class Settings(BaseSettings):
     token_expire_minutes: int = 60  # Reducido de 720 a 60 minutos
     rate_limit_requests: int = 100
     rate_limit_period: int = 60  # segundos
-    smtp_host: str | None = None
-    smtp_port: int = 587
-    smtp_user: str | None = None
-    smtp_password: str | None = None
-    smtp_from: str = "creditos@localhost"
-    smtp_use_tls: bool = True
+    graph_tenant_id: str | None = None
+    graph_client_id: str | None = None
+    graph_client_secret: str | None = None
+    graph_mail_from: str = "creditos@localhost"
+    graph_save_to_sent_items: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

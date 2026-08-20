@@ -4,9 +4,9 @@ services:
     container_name: creditos_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: creditos
-      POSTGRES_USER: creditos
-      POSTGRES_PASSWORD: creditos
+      POSTGRES_DB: ${DB_NAME:-creditos}
+      POSTGRES_USER: ${DB_USER:-creditos}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-creditos-local}
     ports:
       - "5440:5432"
     volumes:
@@ -23,14 +23,14 @@ services:
     container_name: creditos_backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://creditos:creditos@creditos_db:5432/creditos
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-creditos}:${DB_PASSWORD:-creditos-local}@creditos_db:5432/${DB_NAME:-creditos}
       CORS_ORIGINS: http://localhost:4210,http://127.0.0.1:4210
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-creditos@localhost}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      AUTH_SECRET: ${AUTH_SECRET:-change-this-in-production-use-strong-random-key-min-32-chars}
+      GRAPH_TENANT_ID: ${GRAPH_TENANT_ID:-}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:-}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET:-}
+      GRAPH_MAIL_FROM: ${GRAPH_MAIL_FROM:-creditos@carmaxcolombia.com.co}
+      GRAPH_SAVE_TO_SENT_ITEMS: ${GRAPH_SAVE_TO_SENT_ITEMS:-true}
     ports:
       - "8010:8010"
     volumes:
