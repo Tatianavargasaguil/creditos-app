@@ -87,6 +87,14 @@ El script hará todo automáticamente:
 - ✅ Configura variables
 - ✅ Inicia los contenedores
 
+> Importante: usa siempre el archivo de producción para levantar la app en Hostinger:
+>
+> ```bash
+> docker compose -f docker-compose.prod.yml up -d --build
+> ```
+>
+> No uses `docker compose up -d --build` sin `-f docker-compose.prod.yml` porque ese archivo local de desarrollo no incluye la configuración de producción y de certificados SSL.
+
 ---
 
 ## Paso 5: Verificar que todo funciona
@@ -100,6 +108,21 @@ docker-compose -f docker-compose.prod.yml logs -f creditos_backend
 
 # Ver logs del frontend
 docker-compose -f docker-compose.prod.yml logs -f creditos_frontend
+```
+
+---
+
+## SSL y Nginx
+
+La configuración por defecto del proyecto ahora está preparada para arrancar en HTTP si aún no existen certificados SSL. Esto evita que Nginx falle al iniciar en Hostinger si el dominio todavía no tiene certs emitidos.
+
+Cuando los certificados estén listos, entonces se puede reactivar la configuración HTTPS en [nginx/default.conf](nginx/default.conf) usando el bloque comentado que viene incluido en ese archivo.
+
+```bash
+# Si el certificado ya existe:
+certbot certonly --standalone -d tu-dominio.com
+
+# Luego activar la config HTTPS del nginx/default.conf
 ```
 
 ---
