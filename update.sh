@@ -7,7 +7,7 @@ echo "🔄 Actualizando aplicación..."
 echo ""
 
 # Ir a directorio del proyecto
-cd /root/creditos
+cd /root/creditos-app
 
 # 1. Pull del código
 echo "📥 Descargando cambios..."

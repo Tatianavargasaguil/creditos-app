@@ -47,14 +47,17 @@ fi
 
 # 5. Clonar repositorio (si no existe)
 echo -e "${BLUE}[5/7] Verificando código...${NC}"
-if [ ! -d "/root/creditos" ]; then
+APP_DIR="/root/creditos-app"
+REPO_URL="https://github.com/Tatianavargasaguil/creditos-app.git"
+
+if [ ! -d "$APP_DIR" ]; then
     echo -e "${YELLOW}Clonando repositorio...${NC}"
     cd /root
-    git clone https://github.com/TU_USUARIO/creditos.git
-    cd creditos
+    git clone "$REPO_URL" creditos-app
+    cd "$APP_DIR"
 else
     echo -e "${GREEN}✓ Código ya existe, actualizando...${NC}"
-    cd /root/creditos
+    cd "$APP_DIR"
     git pull origin main
 fi
 
@@ -67,7 +70,7 @@ if [ ! -f ".env" ]; then
     echo -e "${YELLOW}    nano .env${NC}"
     exit 1
 else
-    echo -e "${GREEN}✓ .env ya existe${NC}"
+    echo -e "${GREEN}✓ .env ya existe y no se sobrescribe${NC}"
 fi
 
 # 7. Iniciar contenedores

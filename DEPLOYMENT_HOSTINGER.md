@@ -35,8 +35,8 @@ Una vez dentro del servidor:
 cd /root
 
 # Clonar tu repositorio (cambia la URL por la tuya)
-git clone https://github.com/tu-usuario/creditos.git
-cd creditos
+git clone https://github.com/Tatianavargasaguil/creditos-app.git
+cd creditos-app
 ```
 
 ---
@@ -44,8 +44,8 @@ cd creditos
 ## Paso 3: Configurar variables de entorno
 
 ```bash
-# Copiar archivo de ejemplo
-cp .env.example .env
+# Copiar archivo de ejemplo solo si no existe
+test -f .env || cp .env.example .env
 
 # Editar variables
 nano .env
@@ -127,7 +127,7 @@ docker-compose -f docker-compose.prod.yml restart
 docker-compose -f docker-compose.prod.yml logs -f
 
 # Actualizar código y redeploy
-cd /root/creditos
+cd /root/creditos-app
 git pull origin main
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
